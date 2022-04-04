@@ -54,9 +54,9 @@ def MyJacSimWithOrderedLists(docID1, docID2):
 mylist = MyReadDataRoutine(input("Gimme file name: "),input("Gimme Num of Files: "))
 
 #Need to be tested
-def create_random_hash(docID,K):
+def create_random_hash(docID,W):
     h=create_random_hash_function()
-    return {index:h(item) for index in range(K) for item in docID}
+    return {index:h(item) for index in range(W) for item in docID}
 
 
 #print((MyJacSimWithSets(mylist[0],mylist[1]))/(len(mylist[0])+len(mylist[1])-MyJacSimWithSets(mylist[0],mylist[1])))
