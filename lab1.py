@@ -1,3 +1,4 @@
+from ctypes import Union
 import random
 def create_random_hash_function(p=2**33-355, m=2**32-1):
     a = random.randint(1,p-1)
@@ -33,7 +34,7 @@ def MyJacSimWithSets(docID1,docID2):
         for j in docID2:
             if i==j:
                 intersectionCounter+=1
-    return intersectionCounter
+    return intersectionCounter/(len(docID1)+len(docID2)-intersectionCounter)
 
 def MyJacSimWithOrderedLists(docID1, docID2):
     pos1 = 0; pos2 = 0; intersectionCounter = 0
@@ -47,9 +48,10 @@ def MyJacSimWithOrderedLists(docID1, docID2):
                 pos1+=1
             else: 
                 pos2+=1
-    return intersectionCounter
+    return intersectionCounter/(len1+len2-intersectionCounter)
 
 mylist = MyReadDataRoutine(input("Gimme file name: "),input("Gimme Num of Files: "))
 
-print((MyJacSimWithSets(mylist[0],mylist[1]))/(len(mylist[0])+len(mylist[1])-MyJacSimWithSets(mylist[0],mylist[1])))
-print(len(mylist[0].intersection(mylist[1]))/len(mylist[0].union(mylist[1])))
+#print((MyJacSimWithSets(mylist[0],mylist[1]))/(len(mylist[0])+len(mylist[1])-MyJacSimWithSets(mylist[0],mylist[1])))
+#print(len(mylist[0].intersection(mylist[1]))/len(mylist[0].union(mylist[1])))
+#print(MyJacSimWithSets(mylist[0],mylist[1]))
