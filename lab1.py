@@ -17,7 +17,7 @@ def MyReadDataRoutine(fileName, numDocuments):
 
     input.readline() #skip 2nd and 3rd line
     input.readline()
-    
+
     curLine = input.readline().split() # read current file number
     for i in range(1,numDocuments+1):  # and iterate until we reach next file num
         curSet = set()
@@ -25,7 +25,7 @@ def MyReadDataRoutine(fileName, numDocuments):
             curSet.add(int(curLine[1]))
             curLine = input.readline().split()
         output.append(frozenset(curSet)) # save as frozen set to output list
-        
+
     return output
 
 
@@ -45,9 +45,9 @@ def MyJacSimWithOrderedLists(docID1, docID2):
         if docID1[pos1]==docID2[pos2]:
             intersecrtionCounter +=1; pos1+=1; pos2+=1
         else:
-            if docID1[pos1] < docID2[pos2]: 
+            if docID1[pos1] < docID2[pos2]:
                 pos1+=1
-            else: 
+            else:
                 pos2+=1
     return intersectionCounter/(len1+len2-intersectionCounter)
 
