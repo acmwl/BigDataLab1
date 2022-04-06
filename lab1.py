@@ -4,6 +4,7 @@ import random
 import time
 from math import floor
 
+
 def create_random_hash_function(p=2**33-355, m=2**32-1):
     a = random.randint(1,p-1)
     b = random.randint(0, p-1)
@@ -28,8 +29,7 @@ def MyReadDataRoutine(fileName, numDocuments):
         while int(curLine[0]) == i:
             curSet.add(int(curLine[1]))
             curLine = input.readline().split()
-        output.append(frozenset(curSet)) # save as frozen set to output list
-
+        output.append(sorted(frozenset(curSet))) # save as frozen set to output list
     return output
 
 def MyJacSimWithSets(docID1,docID2):
@@ -43,12 +43,14 @@ def MyJacSimWithSets(docID1,docID2):
 def MyJacSimWithOrderedLists(docID1, docID2):
     docID1 = sorted(docID1)
     docID2 = sorted(docID2)
-    pos1 = 0; pos2 = 0; intersectionCounter = 0
-    len1 = len(docID1);
-    len2 = len(docID2);
-    while pos1<len1 and len2<pos2:
+    pos1 = 0
+    pos2 = 0
+    intersectionCounter = 0
+    len1 = len(docID1)
+    len2 = len(docID2)
+    while pos1<len1 and pos2<len2:
         if docID1[pos1]==docID2[pos2]:
-            intersecrtionCounter +=1; pos1+=1; pos2+=1
+            intersectionCounter +=1; pos1+=1; pos2+=1
         else:
             if docID1[pos1] < docID2[pos2]:
                 pos1+=1
@@ -57,20 +59,20 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     return intersectionCounter/(len1+len2-intersectionCounter)
 
 def MyMinHash(docList, K):
+    random.seed(10)
     h = []
     for i in range(K):
         randomHash = {i:create_random_hash_function()(i) for i in range(dictSize)}
         myHashKeysOrderedByValues = sorted(randomHash, key = randomHash.get)
         myHash = {myHashKeysOrderedByValues[x]:x for x in range(dictSize)}
         h.append(myHash)
-
-
+        print("Progress, ",i)
+    
     sig = []
     for col in range(len(docList)):
         sig.append([])
         for i in range(K):
             sig[col].append(dictSize)
-
 
     for col in range(len(docList)):
         for row in docList[col]:
@@ -80,7 +82,11 @@ def MyMinHash(docList, K):
     return sig
 
 def MySigSim(docID1, docID2, numPermutations):
-    return (len(frozenset(docID1[:numPermutations]).intersection(frozenset(docID2[:numPermutations]))))/numPermutations
+    counter=0
+    for i in range(numPermutations):
+        if(docID1[i]==docID2[i]):
+            counter+=1
+    return counter/numPermutations
 
 def bruteForceJacSim(docList, numDocuments, numNeighbors):
 
@@ -110,7 +116,6 @@ def bruteForceJacSim(docList, numDocuments, numNeighbors):
     Avg = Avg/numDocuments
 
     return Avg
-    return
 
 def bruteForceSigSim(docList, numDocuments, numNeighbors):
     hashNumber = 50
@@ -149,7 +154,7 @@ def LSH(sig, rowsPerBands):
     LSHdicts = [dict() for i in range(numBands)] #docID: hashLSH(SIG[bandRows:docID])
     for band in range(len(LSHdicts)):
         for signature in range(len(sig)):
-            curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if band<(len(LSHdicts)-1) else len(sig[signature])-1)])
+            curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if (band+1)*rowsPerBands<len(sig[signature]) else len(sig[signature]))])
             LSHdicts[band][signature] = hashLSH(hash(curSig))
         LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}
 
@@ -171,12 +176,12 @@ def LSH(sig, rowsPerBands):
                 counter+=1
     print(result)
     return result
-        
-        
 
 
-list = MyReadDataRoutine("DATA_1-docword.enron.txt",10)
-
-LSH(MyMinHash(list,10),10//4)
+list = MyReadDataRoutine("DATA_1-docword.enron.txt",80)
 
 
+sig = MyMinHash(list,800)
+
+print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
+print("Sig sim: ",MySigSim(sig[5],sig[18],800))
