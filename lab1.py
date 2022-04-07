@@ -3,6 +3,7 @@ from operator import index
 import random
 import time
 from math import floor
+from math import ceil
 
 
 def create_random_hash_function(p=2**33-355, m=2**32-1):
@@ -158,30 +159,38 @@ def LSH(sig, rowsPerBands):
             LSHdicts[band][signature] = hashLSH(hash(curSig))
         LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}
 
-    result = []
-
+    pairs = set()
     for band in LSHdicts:
-        result.append([])
-        counter = 0
-        keys = [key for key in band]
-        for i in range(len(keys)-1):
-            if(band[keys[i]]==band[keys[i+1]]):
-                result[counter].append(keys[i])
-                if i+1==len(keys)-1:
-                    result[counter].append(keys[i+1])
-            elif(band[keys[i-1]]!=band[keys[i]]):
-                continue
+        cand = []
+        keys = [key for key in band.keys()]
+        print(keys)
+        values = [val for val in band.values()]
+        print(values)
+        for val in range(len(values)-1):
+            if values[val]==values[val+1]:
+                cand.append(keys[val])
             else:
-                result.append([])
-                counter+=1
-    print(result)
-    return result
+                cand.append(keys[val])
+                if(len(cand)>1):
+                    for i in range(len(cand)-1):
+                        for j in range(i+1,len(cand)):
+                            if cand[i]<cand[j]:
+                                pairs.add((cand[i],cand[j]))
+                            elif cand[i]>cand[j]:
+                                pairs.add((cand[j],cand[i]))
+                            else:
+                                print('error')
+                cand = []
+
+    print(pairs)
+    return pairs
 
 
-list = MyReadDataRoutine("DATA_1-docword.enron.txt",80)
+list = MyReadDataRoutine("DATA_1-docword.enron.txt",90)
 
+sig = MyMinHash(list,32)
 
-sig = MyMinHash(list,800)
+LSH(sig, ceil(32/17))
 
-print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
-print("Sig sim: ",MySigSim(sig[5],sig[18],800))
+#print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
+#print("Sig sim: ",MySigSim(sig[5],sig[18],200))
