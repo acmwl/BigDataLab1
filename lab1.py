@@ -4,7 +4,18 @@ import random
 import time
 from math import floor
 from math import ceil
+from time import sleep
 
+
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'):
+    percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
+    filledLength = int(length * iteration // total)
+    bar = fill * filledLength + '-' * (length - filledLength)
+    print('\r %s |%s| %s%% %s' % (prefix, bar, percent, suffix), end = '\r')
+    # Print New Line on Complete
+    if iteration == total:
+        print()
+        print() 
 
 def create_random_hash_function(p=2**33-355, m=2**32-1):
     a = random.randint(1,p-1)
@@ -34,11 +45,13 @@ def MyReadDataRoutine(fileName, numDocuments):
     return output
 
 def MyJacSimWithSets(docID1,docID2):
+    start=time.process_time()
     intersectionCounter = 0
     for i in docID1:
         for j in docID2:
             if i==j:
                 intersectionCounter+=1
+    print("ExecTime : "+time.process_time() - start)
     return intersectionCounter/(len(docID1)+len(docID2)-intersectionCounter)
 
 def MyJacSimWithOrderedLists(docID1, docID2):
@@ -62,12 +75,13 @@ def MyJacSimWithOrderedLists(docID1, docID2):
 def MyMinHash(docList, K):
     random.seed(10)
     h = []
+    print("Creating the Minhash Functions")
     for i in range(K):
         randomHash = {i:create_random_hash_function()(i) for i in range(dictSize)}
         myHashKeysOrderedByValues = sorted(randomHash, key = randomHash.get)
         myHash = {myHashKeysOrderedByValues[x]:x for x in range(dictSize)}
         h.append(myHash)
-        print("Progress, ",i)
+        printProgressBar(i,K)
     
     sig = []
     for col in range(len(docList)):
@@ -90,7 +104,7 @@ def MySigSim(docID1, docID2, numPermutations):
     return counter/numPermutations
 
 def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
-
+    start_time=time.time()
     if(numDocuments>len(docList) or numNeighbors>len(docList)):
         return
     
@@ -111,7 +125,6 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
             neighbors[key] = 1 - myDict[key]
             counter += 1
         simList.append(neighbors)
-    print("Time cost: ",time.time()-start_time)
 
     AvgSim = []
     Avg = 0
@@ -122,16 +135,15 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
         AvgSim.append(avg/numNeighbors)
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
-
+    print("--- ExecTime--- : ",time.time() - start_time)
     return simList #AvgSim #Avg
 
 def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
-    
+    start_time=time.time()
     if(numDocuments>len(sig) or numNeighbors>len(sig)):
         return
 
     simList = []
-    start_time = time.time()
     for i in range(numDocuments):
         myDict = {}
         for j in range(numDocuments):
@@ -147,7 +159,6 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
             neighbors[key] = 1 - myDict[key]
             counter += 1
         simList.append(neighbors)
-    print("Time cost: ",time.time()-start_time)
 
     AvgSim = []
     Avg = 0
@@ -158,10 +169,11 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
         AvgSim.append(avg/numNeighbors)
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
-
+    print("--- ExecTime of Brute Force Using SigSimilarity : ---" , time.time() - start_time)
     return simList #AvgSim #Avg
 
 def LSH(sig, rowsPerBands):
+    start_time=time.time()
     hashLSH = create_random_hash_function()
     numBands = floor(len(sig[0])/rowsPerBands)
     LSHdicts = [dict() for i in range(numBands)] #docID: hashLSH(SIG[bandRows:docID])
@@ -194,73 +206,97 @@ def LSH(sig, rowsPerBands):
                             else:
                                 print('error')
                 cand = []
+    print("The result in ExeTime(%s)" %(time.time()-start_time))
     print(pairs)
     return pairs
 
+def count(variable,numOfHashes):
+    r = int(numOfHashes/variable)
+    b = floor(numOfHashes/r)
+    s = (1/b)**(1/r)
+    print("The number of bands : ",b, "\nThe number of Rows : ", r , "\nThe number of Threshold : ",s)
+    return r
 
 def main():
-    #a
-    nameOfDucument=input("Enter the name of the document(name.txt) : ")
-    numberOfDucuments=input("Give me the number of the documents you want to read : ")
-    listData=MyReadDataRoutine(nameOfDucument,numberOfDucuments)
+    
+    
+    while True:
+        #a
+        nameOfDucument=input("Enter the name of the document(name.txt) : ")
+        numberOfDucuments=int(input("Give me the number of the documents you want to read : "))
+        listData=MyReadDataRoutine(nameOfDucument,numberOfDucuments)
 
-    #b
-    numNeighbors=input("Give me the number of the neighbors you want: ")
-    while (numNeighbors>5) or (numNeighbors<2):
-        numNeighbors=input("Give me again the number of the neigbors you want (2,3..,5): ")
+        #b
+        numNeighbors=int(input("Give me the number of the neighbors you want: "))
+        while (int(numNeighbors)>5) or (int(numNeighbors)<2):
+            numNeighbors=input("Give me again the number of the neigbors you want (2,3..,5): ")
 
-    #c
-    numberOfK=input("Give me the number of random permutations : ")
-    sig=MyMinHash(list,numberOfK)
+        #c
+        numberOfK=int(input("Give me the number of random permutations (we suggest that the number is a power of 2) : "))
+        sig=MyMinHash(listData,numberOfK)
+        
 
-    #d
-    methods=input("Give me which similarity method you want to use (JacSim or SigSim): ")
+        #d
+        method=input("Give me which similarity method you want to use (JacSim or SigSim): ")
 
-    #e
-    methods1=input("Which method you want to use BruteForce or LSH: ")
+        #e
+        method1=input("Which method you want to use BruteForce or LSH: ")
 
-    if methods1=="BruteForce":
-        if methods=="JacSim":
-            bruteForceJacNeighbors(list,numberOfDucuments,numNeighbors)
-        elif method=="SigSim":
-            bruteForceSigNeighbors(list,numberOfDucuments,numNeighbors)
+        if method1=="BruteForce":
+            if method=="JacSim":
+                bruteForceJacNeighbors(listData,numberOfDucuments,numNeighbors)
+            elif method=="SigSim":
+                bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
+        elif method1=="LSH":
+            number=0
+            variable=8
+            
+            while True:
+                print("We recommend :\n")
+                number=count(variable,numberOfK)
+                answer=input("\n If you want to increase the threshold type (increase) else type (decrease) or enter for continue: ")
+                if(answer=="increase"):variable=variable/2
+                elif(answer=="decrease"):variable=variable*2
+                else: break
+            print("\n")
+            LSH(sig,number)
+            
+        print("\n")
+        if(input("Do you want to give me specific docID (Yes or No) :")=="Yes"):
+            docID1=int(input("Give me the first DocID : "))
+            docID2=int(input("Give me the second DocID : "))
 
-    #elif methods1=="LSH":
+            numberOfK=int(input("Give me the number of random permutations : "))
 
-    if(input("Do you want to give me specific docID :")=="Yes"):
-        docID1=input("Give me the first DocID : ")
-        docID2=input("Give me the second DocID : ")
-
-        numberOfK=input("Give me the number of random permutations : ")
-
-        print("Jac sim with Sets: ",MyJacSimWithSets(listData[docID1-1],listData[docID2-1]))
-        print("Jac sim with Ordered List : ", MyJacSimWithOrderedLists(listData[docID1-1],listData[docID2-1]))
-        print("Sig sim: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
-
-
-
-
-variable = 16
-
-
-
-numOfFilesRead = 90
-numOfHashes = 64
-r = int(numOfHashes/variable)
-b = floor(numOfHashes/r)
-s = (1/b)**(1/r)
-
-
-list = MyReadDataRoutine("DATA_1-docword.enron.txt",numOfFilesRead)
-
-sig = MyMinHash(list,numOfHashes)
-simList = bruteForceSigNeighbors(sig,90,1)
-print(simList[27],simList[48],simList[36],simList[45])
+            print("Jac sim with Sets: ",MyJacSimWithSets(listData[docID1-1],listData[docID2-1]))
+            print("Jac sim with Ordered List : ", MyJacSimWithOrderedLists(listData[docID1-1],listData[docID2-1]))
+            print("Sig sim: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
+    
+        if(input("Do you want to start again (Yes or No) :")!="Yes"):break
 
 
-LSH(sig, r)
-print("Bands: ",b,"\nRows: ",r,"\nThreshold: ",s)
 
+#variable = 32
+
+
+
+#numOfFilesRead = 90
+#numOfHashes = 1024
+#r = int(numOfHashes/variable)
+#b = floor(numOfHashes/r)
+#s = (1/b)**(1/r)
+
+
+#list = MyReadDataRoutine("DATA_1-docword.enron.txt",numOfFilesRead)
+
+#sig = MyMinHash(list,numOfHashes)
+#simList = bruteForceSigNeighbors(sig,90,1)
+#print(simList[27],simList[48],simList[36],simList[45])
+
+main()
+
+#LSH(sig, r)
+#print("Bands: ",b,"\nRows: ",r,"\nThreshold: ",s)
 
 
 #print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
