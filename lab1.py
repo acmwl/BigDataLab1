@@ -89,7 +89,7 @@ def MySigSim(docID1, docID2, numPermutations):
             counter+=1
     return counter/numPermutations
 
-def bruteForceJacSim(docList, numDocuments, numNeighbors):
+def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
 
     if(numDocuments>len(docList) or numNeighbors>len(docList)):
         return
@@ -98,14 +98,21 @@ def bruteForceJacSim(docList, numDocuments, numNeighbors):
     start_time = time.time()
     for i in range(numDocuments):
         myDict = {}
-        for j in range(numNeighbors):
-            myDict[j] = 1 - MyJacSimWithSets(docList[i],docList[j])
-        myDict = dict(sorted(myDict.items(), key=lambda x:x[1]))
+        for j in range(numDocuments):
+            if i==j: 
+                continue
+            myDict[j] = 1 - MyJacSimWithOrderedLists(docList[i],docList[j])
+        myDict = {k: v for k, v in sorted(myDict.items(), key = lambda item:item[1])}
+        counter = 0
+        neighbors = {}
         for key in myDict:
-            myDict[key] = 1 - myDict[key]
-        simList.append(myDict)
-    
+            if counter>=numNeighbors:
+                break
+            neighbors[key] = 1 - myDict[key]
+            counter += 1
+        simList.append(neighbors)
     print("Time cost: ",time.time()-start_time)
+
     AvgSim = []
     Avg = 0
     for i in range(len(simList)):
@@ -116,27 +123,32 @@ def bruteForceJacSim(docList, numDocuments, numNeighbors):
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
 
-    return Avg
+    return simList
 
-def bruteForceSigSim(docList, numDocuments, numNeighbors):
-    hashNumber = 50
-
-    if(numDocuments>len(docList) or numNeighbors>len(docList)):
-        return
+def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
     
-    sig = MyMinHash(docList, hashNumber)
+    if(numDocuments>len(sig) or numNeighbors>len(sig)):
+        return
+
     simList = []
     start_time = time.time()
     for i in range(numDocuments):
         myDict = {}
-        for j in range(numNeighbors):
-            myDict[j] = 1 - MySigSim(sig[i],sig[j],hashNumber)
-        myDict = dict(sorted(myDict.items(), key=lambda x:x[1]))
+        for j in range(numDocuments):
+            if i==j: 
+                continue
+            myDict[j] = 1 - MySigSim(sig[i],sig[j],len(sig[i]))
+        myDict = {k: v for k, v in sorted(myDict.items(), key = lambda item:item[1])}
+        counter = 0
+        neighbors = {}
         for key in myDict:
-            myDict[key] = 1 - myDict[key]
-        simList.append(myDict)
-    
+            if counter>=numNeighbors:
+                break
+            neighbors[key] = 1 - myDict[key]
+            counter += 1
+        simList.append(neighbors)
     print("Time cost: ",time.time()-start_time)
+
     AvgSim = []
     Avg = 0
     for i in range(len(simList)):
@@ -147,27 +159,28 @@ def bruteForceSigSim(docList, numDocuments, numNeighbors):
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
 
-    return Avg
- 
+    return simList
+
 def LSH(sig, rowsPerBands):
     hashLSH = create_random_hash_function()
-    numBands = floor(len(sig)/rowsPerBands)
+    numBands = floor(len(sig[0])/rowsPerBands)
     LSHdicts = [dict() for i in range(numBands)] #docID: hashLSH(SIG[bandRows:docID])
     for band in range(len(LSHdicts)):
         for signature in range(len(sig)):
             curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if (band+1)*rowsPerBands<len(sig[signature]) else len(sig[signature]))])
             LSHdicts[band][signature] = hashLSH(hash(curSig))
         LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}
+    
 
     pairs = set()
     for band in LSHdicts:
         cand = []
         keys = [key for key in band.keys()]
-        print(keys)
+        #print(keys)
         values = [val for val in band.values()]
-        print(values)
+        #print(values)
         for val in range(len(values)-1):
-            if values[val]==values[val+1]:
+            if values[val]==values[val+1] and val<len(values)-2:
                 cand.append(keys[val])
             else:
                 cand.append(keys[val])
@@ -181,16 +194,33 @@ def LSH(sig, rowsPerBands):
                             else:
                                 print('error')
                 cand = []
-
     print(pairs)
     return pairs
 
 
-list = MyReadDataRoutine("DATA_1-docword.enron.txt",90)
 
-sig = MyMinHash(list,32)
+variable = 16
 
-LSH(sig, ceil(32/17))
+
+
+numOfFilesRead = 90
+numOfHashes = 64
+r = int(numOfHashes/variable)
+b = floor(numOfHashes/r)
+s = (1/b)**(1/r)
+
+
+list = MyReadDataRoutine("DATA_1-docword.enron.txt",numOfFilesRead)
+
+sig = MyMinHash(list,numOfHashes)
+simList = bruteForceSigNeighbors(sig,90,1)
+print(simList[27],simList[48],simList[36],simList[45])
+
+
+LSH(sig, r)
+print("Bands: ",b,"\nRows: ",r,"\nThreshold: ",s)
+
+
 
 #print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
 #print("Sig sim: ",MySigSim(sig[5],sig[18],200))
