@@ -123,7 +123,7 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
 
-    return simList
+    return simList #AvgSim #Avg
 
 def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
     
@@ -159,7 +159,7 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
 
-    return simList
+    return simList #AvgSim #Avg
 
 def LSH(sig, rowsPerBands):
     hashLSH = create_random_hash_function()
@@ -196,6 +196,47 @@ def LSH(sig, rowsPerBands):
                 cand = []
     print(pairs)
     return pairs
+
+
+def main():
+    #a
+    nameOfDucument=input("Enter the name of the document(name.txt) : ")
+    numberOfDucuments=input("Give me the number of the documents you want to read : ")
+    listData=MyReadDataRoutine(nameOfDucument,numberOfDucuments)
+
+    #b
+    numNeighbors=input("Give me the number of the neighbors you want: ")
+    while (numNeighbors>5) or (numNeighbors<2):
+        numNeighbors=input("Give me again the number of the neigbors you want (2,3..,5): ")
+
+    #c
+    numberOfK=input("Give me the number of random permutations : ")
+    sig=MyMinHash(list,numberOfK)
+
+    #d
+    methods=input("Give me which similarity method you want to use (JacSim or SigSim): ")
+
+    #e
+    methods1=input("Which method you want to use BruteForce or LSH: ")
+
+    if methods1=="BruteForce":
+        if methods=="JacSim":
+            bruteForceJacNeighbors(list,numberOfDucuments,numNeighbors)
+        elif method=="SigSim":
+            bruteForceSigNeighbors(list,numberOfDucuments,numNeighbors)
+
+    #elif methods1=="LSH":
+
+    if(input("Do you want to give me specific docID :")=="Yes"):
+        docID1=input("Give me the first DocID : ")
+        docID2=input("Give me the second DocID : ")
+
+        numberOfK=input("Give me the number of random permutations : ")
+
+        print("Jac sim with Sets: ",MyJacSimWithSets(listData[docID1-1],listData[docID2-1]))
+        print("Jac sim with Ordered List : ", MyJacSimWithOrderedLists(listData[docID1-1],listData[docID2-1]))
+        print("Sig sim: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
+
 
 
 
