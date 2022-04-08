@@ -6,9 +6,8 @@ from math import floor
 from math import ceil
 from time import sleep
 
-
-
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'):
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'): 
+    #Taken from https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
@@ -37,22 +36,23 @@ def MyReadDataRoutine(fileName, numDocuments):
     input.readline() #skip 3rd line
 
     curLine = input.readline().split() # read current file number
-    for i in range(1,numDocuments+1):  # and iterate until we reach next file num
+    for i in range(1, numDocuments+1):  # and iterate until we reach next file num
         curSet = set()
-        while int(curLine[0]) == i:
+        while ((int(curLine[0])) == i):
             curSet.add(int(curLine[1]))
             curLine = input.readline().split()
+            if not curLine:
+                break
         output.append(sorted(frozenset(curSet))) # save as frozen set to output list
+    print("Successfully imported document data")
     return output
 
 def MyJacSimWithSets(docID1,docID2):
-    start=time.process_time()
     intersectionCounter = 0
     for i in docID1:
         for j in docID2:
             if i==j:
                 intersectionCounter+=1
-    print("ExecTime : ",time.process_time() - start)
     return intersectionCounter/(len(docID1)+len(docID2)-intersectionCounter)
 
 def MyJacSimWithOrderedLists(docID1, docID2):
@@ -74,17 +74,24 @@ def MyJacSimWithOrderedLists(docID1, docID2):
     return intersectionCounter/(len1+len2-intersectionCounter)
 
 def MyMinHash(docList, K):
-    random.seed(10)
     h = []
     print("Creating the Minhash Functions")
+    total = 0.0
+    start=time.process_time()
     for i in range(K):
-        randomHash = {i:create_random_hash_function()(i) for i in range(dictSize)}
+        randomHash = {i:create_random_hash_function()(i) for i in range(dictSize+1)}
         myHashKeysOrderedByValues = sorted(randomHash, key = randomHash.get)
-        myHash = {myHashKeysOrderedByValues[x]:x for x in range(dictSize)}
+        myHash = {myHashKeysOrderedByValues[x]:x for x in range(dictSize+1)}
         h.append(myHash)
         printProgressBar(i,K)
+    print()
+
+    total += time.process_time()-start
+    print("Hash functions creation time: ",time.process_time()-start," seconds")
     
+    start=time.process_time()
     sig = []
+    print("Creating Signatures for each file")
     for col in range(len(docList)):
         sig.append([])
         for i in range(K):
@@ -95,6 +102,11 @@ def MyMinHash(docList, K):
             for i in range(K):
                 if h[i].get(row) < sig[col][i]:
                     sig[col][i] = h[i].get(row)
+        printProgressBar(col,len(docList))
+    print()
+    total += time.process_time()-start
+    print("Signature creation time: ",time.process_time()-start, " seconds")
+    print("MinHash execution time: ",total, " seconds")
     return sig
 
 def MySigSim(docID1, docID2, numPermutations):
@@ -105,6 +117,7 @@ def MySigSim(docID1, docID2, numPermutations):
     return counter/numPermutations
 
 def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
+    print("Calculating brute force similarity using jacSim, for ",numDocuments," documents and keeping the closest ",numNeighbors, " neighbors")
     start_time=time.time()
     if(numDocuments>len(docList) or numNeighbors>len(docList)):
         return
@@ -126,6 +139,8 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
             neighbors[key] = 1 - myDict[key]
             counter += 1
         simList.append(neighbors)
+        printProgressBar(i,numDocuments)
+    print()
 
     AvgSim = []
     Avg = 0
@@ -136,10 +151,14 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
         AvgSim.append(avg/numNeighbors)
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
-    print("--- ExecTime--- : ",time.time() - start_time)
+
+    print("Average similarity of all averages for each document: ",Avg)
+    print("Average Similarity for each document :",AvgSim)
+    print("Brute force jaccard similarity execution time: ",time.time() - start_time, " seconds")
     return simList #AvgSim #Avg
 
 def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
+    print("Calculating brute force Signature similarity, for ",numDocuments," documents and keeping the closest ",numNeighbors, " neighbors")
     start_time=time.time()
     if(numDocuments>len(sig) or numNeighbors>len(sig)):
         return
@@ -160,6 +179,8 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
             neighbors[key] = 1 - myDict[key]
             counter += 1
         simList.append(neighbors)
+        printProgressBar(i,numDocuments)
+    print()
 
     AvgSim = []
     Avg = 0
@@ -170,21 +191,27 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
         AvgSim.append(avg/numNeighbors)
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
-    print("--- ExecTime of Brute Force Using SigSimilarity : ---" , time.time() - start_time)
-    return simList #AvgSim #Avg
+
+    print("Average similarity of all averages for each document: ",Avg)
+    print("Average Similarity for each document :",AvgSim)
+    print("Brute force Signature similarity execution time: ",time.time() - start_time, " seconds")
+    return simList
 
 def LSH(sig, rowsPerBands):
     start_time=time.time()
     hashLSH = create_random_hash_function()
     numBands = floor(len(sig[0])/rowsPerBands)
     LSHdicts = [dict() for i in range(numBands)] #docID: hashLSH(SIG[bandRows:docID])
-    for band in range(len(LSHdicts)):
+    print("Hashing signatures for each band")
+    for band in range(len(LSHdicts)): #hashing signature parts and assinging to hash-bins for each signature for each band
         for signature in range(len(sig)):
             curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if (band+1)*rowsPerBands<len(sig[signature]) else len(sig[signature]))])
             LSHdicts[band][signature] = hashLSH(hash(curSig))
         LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}
-    
+        printProgressBar(band,len(LSHdicts))
+    print()
 
+    print("Calculating pairs from above hashes")
     pairs = set()
     for band in LSHdicts:
         cand = []
@@ -207,8 +234,8 @@ def LSH(sig, rowsPerBands):
                             else:
                                 print('error')
                 cand = []
-    print("The result in ExeTime(%s)" %(time.time()-start_time))
-    print(pairs)
+
+    print("LSH total execution time: ",time.time()-start_time, " seconds")
     return pairs
 
 def LSHcount(numOfHashes):
@@ -229,7 +256,7 @@ def main():
     if documentSel<1 or documentSel>2: 
         print("Wrong input")
     numberOfDucuments=int(input("How many documents shall be examined: "))
-    inputDoc=MyReadDataRoutine("DATA_1-docword.enron.txt" if documentSel==1 else "DATA_2-docword.nips",numberOfDucuments)
+    inputDoc=MyReadDataRoutine("DATA_1-docword.enron.txt" if documentSel==1 else "DATA_2-docword.nips.txt",numberOfDucuments)
 
     print()
 
@@ -256,18 +283,21 @@ def main():
 
     #e
     compMethod=int(input("Select which comparison method to use (input 1 or 2):\n1)Brute Force comparison\n2)Locality Sensitive Hashing\n"))
+    print("All resulting pairs and lists show documents as their respective counters, but reducted by 1. This means that document i translates to the document with index i+1 in the input file")
     if(compMethod<1 or compMethod >2):
         print("Wrong input, will use option 2")
 
     if compMethod==1:
         if simMethod==1:
-            bruteForceJacNeighbors(inputDoc,numberOfDucuments,numNeighbors)
+            pairs = bruteForceJacNeighbors(inputDoc,numberOfDucuments,numNeighbors)
+            print(pairs if input("print similarity list? (y/n)")=='y' else '')
         else:
-            bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
+            pairs = bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
+            print(pairs if input("print similarity list? (y/n)")=='y' else '')
     else:
         #f
         print()
-        
+
         number=0
         variable=8
         print("Now setting variables for LSH. Recommended threshold is around 0.3")
@@ -284,12 +314,25 @@ def main():
         print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
 
         print("\n")
-        LSH(sig,r)
+        pairs = LSH(sig,r)
+        print(pairs if input("print found pairs? (y/n)")=='y' else '')
+
+        print("Calculating average similarity of found pairs:")
+        averageSim = 0
+        for i in pairs:
+            if simMethod==1:
+                averageSim += MyJacSimWithOrderedLists(inputDoc[i[0]],inputDoc[i[1]])
+            else:
+                averageSim += MySigSim(sig[i[0]],sig[i[1]],numberOfHashes)
+        averageSim /= len(pairs)
+
+        print("Average Similarity: ", averageSim)
+
         
     print("Database succesfully scanned\n")
 
     #3
-    print("To verify above finds, you can check for similarity between two specific files\nSelect 1 or 2:\n1)Compare specific files\n2)Exit")
+    print("To verify above finds, you can check for similarity between two specific files")
 
     while(int(input("How would you like to continue?\n1)Compare specific files\n2)Exit\n"))==1):
         inp = input("Input 2 specific document IDs seperated by space: ").split()
@@ -300,11 +343,22 @@ def main():
         if numberOfK>len(sig[0]):
             numberOfK=len(sig[0]);
 
-        print("Computing Jaccard similarity using Sets: ",MyJacSimWithSets(inputDoc[docID1-1],inputDoc[docID2-1]))
-        print("Computing Jaccard similarity using Ordered Lists : ", MyJacSimWithOrderedLists(inputDoc[docID1-1],inputDoc[docID2-1]))
-        print("Computing Signature similarity: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
+        time1 = time.time()
+        jacSimSets = MyJacSimWithSets(inputDoc[docID1-1],inputDoc[docID2-1])
+        time1 = time.time() - time1
+
+        time2 = time.time()
+        jacSimLists = MyJacSimWithOrderedLists(inputDoc[docID1-1],inputDoc[docID2-1])
+        time2 = time.time() - time2
+
+        time3 = time.time()
+        sigSim = MySigSim(sig[docID1-1],sig[docID2-1],numberOfK)
+        time3 = time.time() - time3
+
+        print("Computed similarities: \nJaccard similarity using sets: ",jacSimSets," exec time: ",time1,
+        "\nJaccard similarity using ordered lists: ",jacSimLists," exec time: ",time2,
+        "\nSignature similarity using minHash signatures: ",sigSim," exec time: ",time3,)
     
     print("Exiting")
 
 main()
-
