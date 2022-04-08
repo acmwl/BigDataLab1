@@ -7,6 +7,7 @@ from math import ceil
 from time import sleep
 
 
+
 def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'):
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
@@ -51,7 +52,7 @@ def MyJacSimWithSets(docID1,docID2):
         for j in docID2:
             if i==j:
                 intersectionCounter+=1
-    print("ExecTime : "+time.process_time() - start)
+    print("ExecTime : ",time.process_time() - start)
     return intersectionCounter/(len(docID1)+len(docID2)-intersectionCounter)
 
 def MyJacSimWithOrderedLists(docID1, docID2):
@@ -210,94 +211,100 @@ def LSH(sig, rowsPerBands):
     print(pairs)
     return pairs
 
-def count(variable,numOfHashes):
-    r = int(numOfHashes/variable)
-    b = floor(numOfHashes/r)
-    s = (1/b)**(1/r)
-    print("The number of bands : ",b, "\nThe number of Rows : ", r , "\nThe number of Threshold : ",s)
-    return r
-
-def main():
-    
-    
-    while True:
-        #a
-        nameOfDucument=input("Enter the name of the document(name.txt) : ")
-        numberOfDucuments=int(input("Give me the number of the documents you want to read : "))
-        listData=MyReadDataRoutine(nameOfDucument,numberOfDucuments)
-
-        #b
-        numNeighbors=int(input("Give me the number of the neighbors you want: "))
-        while (int(numNeighbors)>5) or (int(numNeighbors)<2):
-            numNeighbors=input("Give me again the number of the neigbors you want (2,3..,5): ")
-
-        #c
-        numberOfK=int(input("Give me the number of random permutations (we suggest that the number is a power of 2) : "))
-        sig=MyMinHash(listData,numberOfK)
+def LSHcount(numOfHashes):
+    minr = numOfHashes  
+    for r in range(1,numOfHashes):
         
+        b = floor(numOfHashes/r)
+        if 0.2<((1/b)**(1/r)) and ((1/b)**(1/r))<0.4:
+            minr = r
+    print("Recommended rowsPerBand for ",numOfHashes," permutations is ",minr)
+    return minr
 
-        #d
-        method=input("Give me which similarity method you want to use (JacSim or SigSim): ")
+def main():  
+    print("Scanning and analysing input document")
+    #a
+    print("\nSelect which document to use:\n1)Enron Dataset\n2)Nips dataset")
+    documentSel=int(input("Input selection (input 1 or 2): "))
+    if documentSel<1 or documentSel>2: 
+        print("Wrong input")
+    numberOfDucuments=int(input("How many documents shall be examined: "))
+    inputDoc=MyReadDataRoutine("DATA_1-docword.enron.txt" if documentSel==1 else "DATA_2-docword.nips",numberOfDucuments)
 
-        #e
-        method1=input("Which method you want to use BruteForce or LSH: ")
+    print()
 
-        if method1=="BruteForce":
-            if method=="JacSim":
-                bruteForceJacNeighbors(listData,numberOfDucuments,numNeighbors)
-            elif method=="SigSim":
-                bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
-        elif method1=="LSH":
-            number=0
-            variable=8
-            
-            while True:
-                print("We recommend :\n")
-                number=count(variable,numberOfK)
-                answer=input("\n If you want to increase the threshold type (increase) else type (decrease) or enter for continue: ")
-                if(answer=="increase"):variable=variable/2
-                elif(answer=="decrease"):variable=variable*2
-                else: break
-            print("\n")
-            LSH(sig,number)
-            
-        print("\n")
-        if(input("Do you want to give me specific docID (Yes or No) :")=="Yes"):
-            docID1=int(input("Give me the first DocID : "))
-            docID2=int(input("Give me the second DocID : "))
+    #b
+    numNeighbors=int(input("Input a number of neighbors to check (input a number between 2 and 5): "))
+    if (int(numNeighbors)>5) or (int(numNeighbors)<2):
+        print("Wrong input, setting it to 3")
+        numNeighbors=3
 
-            numberOfK=int(input("Give me the number of random permutations : "))
+    print()
 
-            print("Jac sim with Sets: ",MyJacSimWithSets(listData[docID1-1],listData[docID2-1]))
-            print("Jac sim with Ordered List : ", MyJacSimWithOrderedLists(listData[docID1-1],listData[docID2-1]))
-            print("Sig sim: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
+    #c
+    numberOfHashes=int(input("Input the number of random permutations (i.e. hash functions to be used): "))
+    sig=MyMinHash(inputDoc,numberOfHashes)
     
-        if(input("Do you want to start again (Yes or No) :")!="Yes"):break
+    print()
 
+    #d
+    simMethod=int(input("Select which similarity method to use (input 1 or 2): \n1)Jaccard Similarity using Ordered lists\n2)MinHash signature similarity\n"))
+    if(simMethod<1 or simMethod >2):
+        print("Wrong input, will use option 2")
 
+    print()
 
-#variable = 32
+    #e
+    compMethod=int(input("Select which comparison method to use (input 1 or 2):\n1)Brute Force comparison\n2)Locality Sensitive Hashing\n"))
+    if(compMethod<1 or compMethod >2):
+        print("Wrong input, will use option 2")
 
+    if compMethod==1:
+        if simMethod==1:
+            bruteForceJacNeighbors(inputDoc,numberOfDucuments,numNeighbors)
+        else:
+            bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
+    else:
+        #f
+        print()
+        
+        number=0
+        variable=8
+        print("Now setting variables for LSH. Recommended threshold is around 0.3")
 
+        r = LSHcount(numberOfHashes)
 
-#numOfFilesRead = 90
-#numOfHashes = 1024
-#r = int(numOfHashes/variable)
-#b = floor(numOfHashes/r)
-#s = (1/b)**(1/r)
+        rin = int(input("Select a number of rows to be used per band: "))
+        print(rin," rows yield a threshold of ",(1/floor(numberOfHashes/r))**(1/r))
+        ans = 'y'
+        if rin>r+0.1 or rin<r-0.1:
+            ans = input("Warning, inputted r yields a threshold far from the recommended. Continue with inputted value? (y/n)")
+        r = rin if ans=='y' else r
 
+        print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
 
-#list = MyReadDataRoutine("DATA_1-docword.enron.txt",numOfFilesRead)
+        print("\n")
+        LSH(sig,r)
+        
+    print("Database succesfully scanned\n")
 
-#sig = MyMinHash(list,numOfHashes)
-#simList = bruteForceSigNeighbors(sig,90,1)
-#print(simList[27],simList[48],simList[36],simList[45])
+    #3
+    print("To verify above finds, you can check for similarity between two specific files\nSelect 1 or 2:\n1)Compare specific files\n2)Exit")
+
+    while(int(input("How would you like to continue?\n1)Compare specific files\n2)Exit\n"))==1):
+        inp = input("Input 2 specific document IDs seperated by space: ").split()
+        docID1=int(inp[0])
+        docID2=int(inp[1])
+
+        numberOfK=int(input("Select a number of random permutations to be used from the signatures list: "))
+        if numberOfK>len(sig[0]):
+            numberOfK=len(sig[0]);
+
+        print("Computing Jaccard similarity using Sets: ",MyJacSimWithSets(inputDoc[docID1-1],inputDoc[docID2-1]))
+        print("Computing Jaccard similarity using Ordered Lists : ", MyJacSimWithOrderedLists(inputDoc[docID1-1],inputDoc[docID2-1]))
+        print("Computing Signature similarity: ", MySigSim(sig[docID1-1],sig[docID2-1],numberOfK))
+    
+    print("Exiting")
 
 main()
 
-#LSH(sig, r)
-#print("Bands: ",b,"\nRows: ",r,"\nThreshold: ",s)
-
-
-#print("Jac sim: ",MyJacSimWithSets(list[5],list[18]))
-#print("Sig sim: ",MySigSim(sig[5],sig[18],200))
