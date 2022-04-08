@@ -3,10 +3,8 @@ from operator import index
 import random
 import time
 from math import floor
-from math import ceil
-from time import sleep
 
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'): 
+def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 50, fill = '█'): #Prints a simple progress bar to be used on for loops 
     #Taken from https://stackoverflow.com/questions/3173320/text-progress-bar-in-terminal-with-block-characters
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
@@ -17,12 +15,12 @@ def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, 
         print()
         print() 
 
-def create_random_hash_function(p=2**33-355, m=2**32-1):
+def create_random_hash_function(p=2**33-355, m=2**32-1): #Returns Hash function to be used by MinHash and LSH
     a = random.randint(1,p-1)
     b = random.randint(0, p-1)
     return lambda x: 1 + (((a * x + b) % p) % m)
 
-def MyReadDataRoutine(fileName, numDocuments):
+def MyReadDataRoutine(fileName, numDocuments): #Reads all words from input file and returns a list of sets containing all the words from each document
     input = open(fileName,"r") #open file
     output = list()
     numDocuments = int(numDocuments)
@@ -32,22 +30,22 @@ def MyReadDataRoutine(fileName, numDocuments):
         return 0
 
     global dictSize
-    dictSize = int(input.readline())
+    dictSize = int(input.readline()) #initalise total number of possible words globaly
     input.readline() #skip 3rd line
 
     curLine = input.readline().split() # read current file number
     for i in range(1, numDocuments+1):  # and iterate until we reach next file num
         curSet = set()
-        while ((int(curLine[0])) == i):
+        while ((int(curLine[0])) == i): # while we are in the same file num
             curSet.add(int(curLine[1]))
             curLine = input.readline().split()
-            if not curLine:
+            if not curLine: # edge case for last file
                 break
         output.append(sorted(frozenset(curSet))) # save as frozen set to output list
     print("Successfully imported document data")
-    return output
+    return output 
 
-def MyJacSimWithSets(docID1,docID2):
+def MyJacSimWithSets(docID1,docID2): # Returns Jaccard similarity using 2 for loops
     intersectionCounter = 0
     for i in docID1:
         for j in docID2:
@@ -55,7 +53,7 @@ def MyJacSimWithSets(docID1,docID2):
                 intersectionCounter+=1
     return intersectionCounter/(len(docID1)+len(docID2)-intersectionCounter)
 
-def MyJacSimWithOrderedLists(docID1, docID2):
+def MyJacSimWithOrderedLists(docID1, docID2): # Returns Jaccard similarity using an improved algorithm scanning ordered lists
     docID1 = sorted(docID1)
     docID2 = sorted(docID2)
     pos1 = 0
@@ -73,12 +71,12 @@ def MyJacSimWithOrderedLists(docID1, docID2):
                 pos2+=1
     return intersectionCounter/(len1+len2-intersectionCounter)
 
-def MyMinHash(docList, K):
+def MyMinHash(docList, K): # Hashes all files into signatures to be compared later. Returns said list of signatures
     h = []
     print("Creating the Minhash Functions")
     total = 0.0
     start=time.process_time()
-    for i in range(K):
+    for i in range(K): #creates K different hash functions
         randomHash = {i:create_random_hash_function()(i) for i in range(dictSize+1)}
         myHashKeysOrderedByValues = sorted(randomHash, key = randomHash.get)
         myHash = {myHashKeysOrderedByValues[x]:x for x in range(dictSize+1)}
@@ -86,68 +84,67 @@ def MyMinHash(docList, K):
         printProgressBar(i,K)
     print()
 
-    total += time.process_time()-start
-    print("Hash functions creation time: ",time.process_time()-start," seconds")
+    total += time.process_time()-start 
+    print("Hash functions creation time: ",time.process_time()-start," seconds") # calculate time taken to create hash functions
     
     start=time.process_time()
     sig = []
     print("Creating Signatures for each file")
-    for col in range(len(docList)):
+    for col in range(len(docList)): # set values of signatures matrix to max (=dictSize=biggest possible word)
         sig.append([])
         for i in range(K):
             sig[col].append(dictSize)
 
-    for col in range(len(docList)):
-        for row in docList[col]:
-            for i in range(K):
+    for col in range(len(docList)): # for each file
+        for row in docList[col]: # for each word
+            for i in range(K): # hash and select min possible value (thats why we used max above)
                 if h[i].get(row) < sig[col][i]:
                     sig[col][i] = h[i].get(row)
         printProgressBar(col,len(docList))
     print()
     total += time.process_time()-start
-    print("Signature creation time: ",time.process_time()-start, " seconds")
+    print("Signature creation time: ",time.process_time()-start, " seconds") # calculate time taken to hash documents
     print("MinHash execution time: ",total, " seconds")
     return sig
 
-def MySigSim(docID1, docID2, numPermutations):
+def MySigSim(docID1, docID2, numPermutations): # compares signatures and returns the similarity
     counter=0
-    for i in range(numPermutations):
+    for i in range(numPermutations): #increase counter for each two same signature parts
         if(docID1[i]==docID2[i]):
             counter+=1
     return counter/numPermutations
 
-def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
+def bruteForceJacNeighbors(docList, numDocuments, numNeighbors): # brute force calculation of similarities for select number of closest neighbors. Returns closest neighbor list
     print("Calculating brute force similarity using jacSim, for ",numDocuments," documents and keeping the closest ",numNeighbors, " neighbors")
-    start_time=time.time()
-    if(numDocuments>len(docList) or numNeighbors>len(docList)):
+    if(numDocuments>len(docList) or numNeighbors>len(docList)): #false input
         return
     
     simList = []
     start_time = time.time()
-    for i in range(numDocuments):
+    for i in range(numDocuments): 
         myDict = {}
-        for j in range(numDocuments):
+        for j in range(numDocuments): #for each possible document combination, calculate the distance
             if i==j: 
                 continue
             myDict[j] = 1 - MyJacSimWithOrderedLists(docList[i],docList[j])
-        myDict = {k: v for k, v in sorted(myDict.items(), key = lambda item:item[1])}
+        myDict = {k: v for k, v in sorted(myDict.items(), key = lambda item:item[1])} #sort by distance
         counter = 0
         neighbors = {}
-        for key in myDict:
+        for key in myDict: # keep select number of closest neighbors
             if counter>=numNeighbors:
                 break
-            neighbors[key] = 1 - myDict[key]
+            neighbors[key] = 1 - myDict[key] #convert distance to similarity
             counter += 1
         simList.append(neighbors)
         printProgressBar(i,numDocuments)
     print()
 
-    AvgSim = []
+    AvgSim = [] 
     Avg = 0
-    for i in range(len(simList)):
+    for i in range(len(simList)): #calculate average similarity for each document
         avg = 0
         for key in simList[i]:
-            avg += simList[i][key]
+            avg += simList[i][key] # calculate total average similarity (of average similarities per document)
         AvgSim.append(avg/numNeighbors)
         Avg += AvgSim[i]
     Avg = Avg/numDocuments
@@ -157,14 +154,14 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors):
     print("Brute force jaccard similarity execution time: ",time.time() - start_time, " seconds")
     return simList #AvgSim #Avg
 
-def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
+def bruteForceSigNeighbors(sig, numDocuments, numNeighbors): # Same as above function, but uses Signature similarity instead of Jaccard. Returns similarity list
     print("Calculating brute force Signature similarity, for ",numDocuments," documents and keeping the closest ",numNeighbors, " neighbors")
     start_time=time.time()
     if(numDocuments>len(sig) or numNeighbors>len(sig)):
         return
 
     simList = []
-    for i in range(numDocuments):
+    for i in range(numDocuments): #find closest neighbors using signatures. Check each possible combination of files
         myDict = {}
         for j in range(numDocuments):
             if i==j: 
@@ -182,7 +179,7 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
         printProgressBar(i,numDocuments)
     print()
 
-    AvgSim = []
+    AvgSim = [] #calculate and print averages
     Avg = 0
     for i in range(len(simList)):
         avg = 0
@@ -197,35 +194,35 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors):
     print("Brute force Signature similarity execution time: ",time.time() - start_time, " seconds")
     return simList
 
-def LSH(sig, rowsPerBands):
+def LSH(docList, sig, rowsPerBands, simMethod): #Locality sensitive hashing to find file combinations with similarities over a threshold. Returns a list of said combinations
     start_time=time.time()
     hashLSH = create_random_hash_function()
     numBands = floor(len(sig[0])/rowsPerBands)
     LSHdicts = [dict() for i in range(numBands)] #docID: hashLSH(SIG[bandRows:docID])
     print("Hashing signatures for each band")
-    for band in range(len(LSHdicts)): #hashing signature parts and assinging to hash-bins for each signature for each band
+    for band in range(len(LSHdicts)): # hashing signature parts and assinging to hash-bins for each signature for each band
         for signature in range(len(sig)):
-            curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if (band+1)*rowsPerBands<len(sig[signature]) else len(sig[signature]))])
-            LSHdicts[band][signature] = hashLSH(hash(curSig))
-        LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}
+            curSig = tuple(sig[signature][band*rowsPerBands:((band+1)*rowsPerBands if (band+1)*rowsPerBands<len(sig[signature]) else len(sig[signature]))]) #create a tuple and hash a select part of a signature
+            LSHdicts[band][signature] = hashLSH(hash(curSig)) # select part of above signature is determined by band number. Last band takes rest singnatures (else statement)
+        LSHdicts[band] = {k: v for k, v in sorted(LSHdicts[band].items(), key=lambda item: item[1])}  # sort by value
         printProgressBar(band,len(LSHdicts))
     print()
 
     print("Calculating pairs from above hashes")
     pairs = set()
-    for band in LSHdicts:
+    for band in LSHdicts: # for each band extract pairs by inserting them into a list and then calculating all posible combinations
         cand = []
         keys = [key for key in band.keys()]
         #print(keys)
         values = [val for val in band.values()]
         #print(values)
-        for val in range(len(values)-1):
+        for val in range(len(values)-1): #found same bin element. Adding it to cand list
             if values[val]==values[val+1] and val<len(values)-2:
                 cand.append(keys[val])
-            else:
+            else: #next element is in a different bin. Now we calculate all posible pairs from cand list
                 cand.append(keys[val])
                 if(len(cand)>1):
-                    for i in range(len(cand)-1):
+                    for i in range(len(cand)-1): #find pairs, save them to tuples, add them to a set
                         for j in range(i+1,len(cand)):
                             if cand[i]<cand[j]:
                                 pairs.add((cand[i],cand[j]))
@@ -234,14 +231,22 @@ def LSH(sig, rowsPerBands):
                             else:
                                 print('error')
                 cand = []
-
+    print("Calculating average similarity of found pairs:")
+    averageSim = 0
+    for i in pairs:
+        if simMethod==1:
+            averageSim += MyJacSimWithOrderedLists(docList[i[0]],docList[i[1]])
+        else:
+            averageSim += MySigSim(sig[i[0]],sig[i[1]],len(sig[0]))
+    averageSim /= len(pairs)
+    print("Average Similarity: ", averageSim)
+    
     print("LSH total execution time: ",time.time()-start_time, " seconds")
     return pairs
 
-def LSHcount(numOfHashes):
+def LSHcount(numOfHashes): # Calculate recommended threshold by testing each possible rowsPerBand value
     minr = numOfHashes  
     for r in range(1,numOfHashes):
-        
         b = floor(numOfHashes/r)
         if 0.2<((1/b)**(1/r)) and ((1/b)**(1/r))<0.4:
             minr = r
@@ -314,19 +319,8 @@ def main():
         print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
 
         print("\n")
-        pairs = LSH(sig,r)
+        pairs = LSH(inputDoc,sig,r,simMethod)
         print(pairs if input("print found pairs? (y/n)")=='y' else '')
-
-        print("Calculating average similarity of found pairs:")
-        averageSim = 0
-        for i in pairs:
-            if simMethod==1:
-                averageSim += MyJacSimWithOrderedLists(inputDoc[i[0]],inputDoc[i[1]])
-            else:
-                averageSim += MySigSim(sig[i[0]],sig[i[1]],numberOfHashes)
-        averageSim /= len(pairs)
-
-        print("Average Similarity: ", averageSim)
 
         
     print("Database succesfully scanned\n")
@@ -361,4 +355,7 @@ def main():
     
     print("Exiting")
 
-main()
+#main()
+
+def test(s, c, d):
+    
