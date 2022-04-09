@@ -150,7 +150,7 @@ def bruteForceJacNeighbors(docList, numDocuments, numNeighbors): # brute force c
     Avg = Avg/numDocuments
 
     print("Average similarity of all averages for each document: ",Avg)
-    print("Average Similarity for each document :",AvgSim)
+    #print("Average Similarity for each document :",AvgSim)
     print("Brute force jaccard similarity execution time: ",time.time() - start_time, " seconds")
     return simList #AvgSim #Avg
 
@@ -190,7 +190,7 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors): # Same as above fun
     Avg = Avg/numDocuments
 
     print("Average similarity of all averages for each document: ",Avg)
-    print("Average Similarity for each document :",AvgSim)
+    #print("Average Similarity for each document :",AvgSim)
     print("Brute force Signature similarity execution time: ",time.time() - start_time, " seconds")
     return simList
 
@@ -244,13 +244,15 @@ def LSH(docList, sig, rowsPerBands, simMethod): #Locality sensitive hashing to f
     print("LSH total execution time: ",time.time()-start_time, " seconds")
     return pairs
 
-def LSHcount(numOfHashes): # Calculate recommended threshold by testing each possible rowsPerBand value
+
+def LSHcount(numOfHashes):
     minr = numOfHashes  
     for r in range(1,numOfHashes):
+        
         b = floor(numOfHashes/r)
-        if 0.2<((1/b)**(1/r)) and ((1/b)**(1/r))<0.4:
+        if 0.4<((1/b)**(1/r)) and ((1/b)**(1/r))<0.6:
             minr = r
-    print("Recommended rowsPerBand for ",numOfHashes," permutations is ",minr)
+    print("Recommended rowsPerBand for ",numOfHashes," permutations is ",minr ,"and with threshold :" , (1/floor(numOfHashes/minr))**(1/minr))
     return minr
 
 def main():  
@@ -355,7 +357,111 @@ def main():
     
     print("Exiting")
 
-#main()
 
-def test(s, c, d):
+def test():
+    print("Test for the File : DATA_1-docword.enron.txt ")
     
+    numberOfDucuments=int(input("How many documents shall be examined: "))
+    
+    inputDoc=MyReadDataRoutine("DATA_1-docword.enron.txt",numberOfDucuments)
+    
+    numberOfHashes=int(input("Input the number of random permutations (i.e. hash functions to be used): "))
+    
+    numNeighbors=int(input("Input a number of neighbors to check (input a number between 2 and 5): "))
+    
+    sig=MyMinHash(inputDoc,numberOfHashes)
+    
+    while True: 
+        print()
+        print("You can choose the test you want to run in the document ")
+        print("Options:")
+        print("1)JacSim,BruteForce \n2)SigSim,BruteForce \n3)JacSim,LSH \n4)SigSim,LSH \n5)Chage Inputs \n6)EXIT")
+        selection=int(input())
+        
+        if(selection==1):
+            Experiment1(inputDoc,numberOfDucuments,numNeighbors)
+        if(selection==2):
+            Experiment2(sig,numberOfDucuments,numNeighbors)
+        if(selection==3):
+            Experiment3(inputDoc,sig,numberOfHashes)  
+        if(selection==4):
+            Experiment4(inputDoc,sig,numberOfHashes)
+        if(selection==5):
+            numberOfDucuments=int(input("How many documents shall be examined: "))
+            inputDoc=MyReadDataRoutine(input("Name of the document : "),numberOfDucuments)
+            numberOfHashes=int(input("Input the number of random permutations (i.e. hash functions to be used): "))
+            numNeighbors=int(input("Input a number of neighbors to check (input a number between 2 and 5): "))
+            sig=MyMinHash(inputDoc,numberOfHashes)
+        if(selection==6):
+            print("Exiting")
+            break;
+       
+
+
+def Experiment1(inputDoc,numberOfDucuments,numNeighbors):
+    bruteForceJacNeighbors(inputDoc,numberOfDucuments,numNeighbors)
+    
+def Experiment2(sig,numberOfDucuments,numNeighbors):
+    bruteForceSigNeighbors(sig,numberOfDucuments,numNeighbors)
+    
+def Experiment3(inputDoc,sig,numberOfHashes):
+    print()
+    
+    number=0
+    variable=8
+    print("Now setting variables for LSH. Recommended threshold is around 0.5")
+
+    r = LSHcount(numberOfHashes)
+
+    rin = int(input("Select a number of rows to be used per band: "))
+    print(rin," rows yield a threshold of ",(1/floor(numberOfHashes/rin))**(1/rin))
+    ans = 'y'
+    if rin>r+0.1 or rin<r-0.1:
+        ans = input("Warning, inputted r yields a threshold far from the recommended. Continue with inputted value? (y/n)")
+    r = rin if ans=='y' else r
+
+    print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
+    print("\n")
+    
+    pairs = LSH(sig,r)
+    
+    
+    print("Calculating average similarity of found pairs:")
+    averageSim = 0
+    for i in pairs:
+        averageSim += MyJacSimWithOrderedLists(inputDoc[i[0]],inputDoc[i[1]])
+    averageSim /= len(pairs)
+    print("Average Similarity: ", averageSim)
+    
+def Experiment4(inputDoc,sig,numberOfHashes):
+    print()
+    
+    number=0
+    variable=8
+    print("Now setting variables for LSH. Recommended threshold is around 0.5")
+
+    r = LSHcount(numberOfHashes)
+
+    rin = int(input("Select a number of rows to be used per band: "))
+    print(rin," rows yield a threshold of ",(1/floor(numberOfHashes/rin))**(1/rin))
+    ans = 'y'
+    if rin>r+0.1 or rin<r-0.1:
+        ans = input("Warning, inputted r yields a threshold far from the recommended. Continue with inputted value? (y/n)")
+    r = rin if ans=='y' else r
+
+    print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
+    print("\n")
+   
+    pairs = LSH(sig,r)
+   
+
+    print("Calculating average similarity of found pairs:")
+    averageSim = 0
+    for i in pairs:
+        averageSim += MySigSim(sig[i[0]],sig[i[1]],numberOfHashes)
+    averageSim /= len(pairs)
+
+    print("Average Similarity: ", averageSim)
+    
+   
+test()
