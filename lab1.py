@@ -194,7 +194,7 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors): # Same as above fun
     print("Brute force Signature similarity execution time: ",time.time() - start_time, " seconds")
     return simList
 
-def LSH(docList, sig, rowsPerBands, simMethod): #Locality sensitive hashing to find file combinations with similarities over a threshold. Returns a list of said combinations
+def LSH(docList, sig, rowsPerBands, numNeighbors): #Locality sensitive hashing to find file combinations with similarities over a threshold. Returns a list of said combinations
     start_time=time.time()
     hashLSH = create_random_hash_function()
     numBands = floor(len(sig[0])/rowsPerBands)
@@ -210,6 +210,7 @@ def LSH(docList, sig, rowsPerBands, simMethod): #Locality sensitive hashing to f
 
     print("Calculating pairs from above hashes")
     pairs = set()
+    progressCounter = 0
     for band in LSHdicts: # for each band extract pairs by inserting them into a list and then calculating all posible combinations
         cand = []
         keys = [key for key in band.keys()]
@@ -231,19 +232,43 @@ def LSH(docList, sig, rowsPerBands, simMethod): #Locality sensitive hashing to f
                             else:
                                 print('error')
                 cand = []
-    print("Calculating average similarity of found pairs:")
-    averageSim = 0
-    for i in pairs:
-        if simMethod==1:
-            averageSim += MyJacSimWithOrderedLists(docList[i[0]],docList[i[1]])
-        else:
-            averageSim += MySigSim(sig[i[0]],sig[i[1]],len(sig[0]))
-    averageSim /= len(pairs)
-    print("Average Similarity: ", averageSim)
     
-    print("LSH total execution time: ",time.time()-start_time, " seconds")
-    return pairs
+    #now we have all the canditate pairs. Lets calculate average similarities for all documents, based on found pairs
+    simList = [dict() for i in range(len(sig))] #exactly like brute force
+    for pair in pairs:                          #but now we only check the pairs set LSH made
+       p1 = pair[0]
+       p2 = pair[1]
+       simList[p1][p2] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
+       simList[p2][p1] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
+    for i in range(len(simList)): #sort list by value (distance, by reverse sorting similarity)
+        simList[i] = {k:v for k, v in sorted(simList[i].items(), key = lambda item:item[1],reverse=True)} #sort by distance
+        neighbors = dict()
+        counter = 0
+        for j in simList[i].keys(): #only keep first numNeighbors found
+            if counter>=numNeighbors:
+                break
+            neighbors[j] = simList[i][j]
+            counter+=1
+        simList[i] = neighbors #and save them to simlist
 
+    print("Calculating average similarity of found pairs:")
+
+    AvgSim = [] #calculate and print averages
+    Avg = 0
+    for i in range(len(simList)):
+        avg = 0
+        for key in simList[i]:
+            avg += simList[i][key]
+        AvgSim.append(avg/(len(simList[i]) if len(simList[i])>0 else 1))
+        Avg += AvgSim[i]
+
+    Avg = Avg/len(simList)
+
+    print("Average similarity of all averages for each document: ",Avg)
+    #print("Average Similarity for each document :",AvgSim)
+    print("LSH similarity execution time: ",time.time() - start_time, " seconds")
+
+    return simList
 
 def LSHcount(numOfHashes):
     minr = numOfHashes  
@@ -357,7 +382,6 @@ def main():
     
     print("Exiting")
 
-
 def test():
     print("Test for the File : DATA_1-docword.enron.txt ")
     
@@ -396,8 +420,6 @@ def test():
             print("Exiting")
             break;
        
-
-
 def Experiment1(inputDoc,numberOfDucuments,numNeighbors):
     bruteForceJacNeighbors(inputDoc,numberOfDucuments,numNeighbors)
     
@@ -463,5 +485,9 @@ def Experiment4(inputDoc,sig,numberOfHashes):
 
     print("Average Similarity: ", averageSim)
     
-   
-test()
+
+inp = MyReadDataRoutine("DATA_2-docword.nips.txt",1500)
+sig = MyMinHash(inp,64)
+LSH(inp,sig,2,2)
+
+
