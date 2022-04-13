@@ -72,6 +72,7 @@ def MyJacSimWithOrderedLists(docID1, docID2): # Returns Jaccard similarity using
     return intersectionCounter/(len1+len2-intersectionCounter)
 
 def MyMinHash(docList, K): # Hashes all files into signatures to be compared later. Returns said list of signatures
+    random.seed(10)
     h = []
     print("Creating the Minhash Functions")
     total = 0.0
@@ -194,7 +195,7 @@ def bruteForceSigNeighbors(sig, numDocuments, numNeighbors): # Same as above fun
     print("Brute force Signature similarity execution time: ",time.time() - start_time, " seconds")
     return simList
 
-def LSH(docList, sig, rowsPerBands, numNeighbors): #Locality sensitive hashing to find file combinations with similarities over a threshold. Returns a list of said combinations
+def LSH(docList, sig, rowsPerBands, numNeighbors, simMethod): #Locality sensitive hashing to find file combinations with similarities over a threshold. Returns a list of said combinations
     start_time=time.time()
     hashLSH = create_random_hash_function()
     numBands = floor(len(sig[0])/rowsPerBands)
@@ -234,12 +235,21 @@ def LSH(docList, sig, rowsPerBands, numNeighbors): #Locality sensitive hashing t
                 cand = []
     
     #now we have all the canditate pairs. Lets calculate average similarities for all documents, based on found pairs
-    simList = [dict() for i in range(len(sig))] #exactly like brute force
-    for pair in pairs:                          #but now we only check the pairs set LSH made
-       p1 = pair[0]
-       p2 = pair[1]
-       simList[p1][p2] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
-       simList[p2][p1] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
+    simList = [dict() for i in range(len(sig))] #exactly like brute force but now we only check the pairs set LSH made
+
+    if simMethod==1: #check with jaccard similarity
+        for pair in pairs:                          
+            p1 = pair[0]
+            p2 = pair[1]
+            simList[p1][p2] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
+            simList[p2][p1] = MyJacSimWithOrderedLists(docList[p1],docList[p2])
+    else: #check with signature similarity
+        for pair in pairs:                          
+            p1 = pair[0]
+            p2 = pair[1]
+            simList[p1][p2] = MySigSim(sig[p1],sig[p2], len(sig[0]))
+            simList[p2][p1] = MySigSim(sig[p1],sig[p2], len(sig[0]))
+
     for i in range(len(simList)): #sort list by value (distance, by reverse sorting similarity)
         simList[i] = {k:v for k, v in sorted(simList[i].items(), key = lambda item:item[1],reverse=True)} #sort by distance
         neighbors = dict()
@@ -332,12 +342,12 @@ def main():
 
         number=0
         variable=8
-        print("Now setting variables for LSH. Recommended threshold is around 0.3")
+        print("Now setting variables for LSH. Recommended threshold is around 0.5")
 
         r = LSHcount(numberOfHashes)
 
         rin = int(input("Select a number of rows to be used per band: "))
-        print(rin," rows yield a threshold of ",(1/floor(numberOfHashes/r))**(1/r))
+        print(rin," rows yield a threshold of ",(1/floor(numberOfHashes/rin))**(1/rin))
         ans = 'y'
         if rin>r+0.1 or rin<r-0.1:
             ans = input("Warning, inputted r yields a threshold far from the recommended. Continue with inputted value? (y/n)")
@@ -346,7 +356,7 @@ def main():
         print("Using ",r," rows per band, with a total of ",floor(numberOfHashes/r)," bands")
 
         print("\n")
-        pairs = LSH(inputDoc,sig,r,simMethod)
+        pairs = LSH(inputDoc,sig,r,numNeighbors,simMethod)
         print(pairs if input("print found pairs? (y/n)")=='y' else '')
 
         
@@ -362,7 +372,7 @@ def main():
 
         numberOfK=int(input("Select a number of random permutations to be used from the signatures list: "))
         if numberOfK>len(sig[0]):
-            numberOfK=len(sig[0]);
+            numberOfK=len(sig[0])
 
         time1 = time.time()
         jacSimSets = MyJacSimWithSets(inputDoc[docID1-1],inputDoc[docID2-1])
@@ -381,6 +391,28 @@ def main():
         "\nSignature similarity using minHash signatures: ",sigSim," exec time: ",time3,)
     
     print("Exiting")
+
+
+def test(simMethod = 1, numOfPermutations = 64, neighborsMethod = 1, numOfNeighbors = 2, file = 1, docNum = 15000):
+    inputData = 0
+    if file == 2:
+        inputData = MyReadDataRoutine("DATA_2-docword.nips.txt",docNum)
+    else:
+        inputData = MyReadDataRoutine("DATA_1-docword.enron.txt",docNum)
+    sig = 0
+    if simMethod==2 or neighborsMethod==2:
+        sig = MyMinHash(inputData,numOfPermutations)
+    if neighborsMethod == 2:
+        LSH(inputData, sig, LSHcount(numOfPermutations),numOfNeighbors, simMethod)
+    else:
+        if simMethod == 2:
+            bruteForceSigNeighbors(sig, docNum, numOfNeighbors)
+        else:
+            bruteForceJacNeighbors(inputData, docNum, numOfNeighbors)
+    
+    
+"""
+
 
 def test():
     print("Test for the File : DATA_1-docword.enron.txt ")
@@ -484,10 +516,9 @@ def Experiment4(inputDoc,sig,numberOfHashes):
     averageSim /= len(pairs)
 
     print("Average Similarity: ", averageSim)
-    
 
-inp = MyReadDataRoutine("DATA_2-docword.nips.txt",1500)
-sig = MyMinHash(inp,64)
-LSH(inp,sig,2,2)
+"""
 
+#test(2,64,2,2,1,15000)
 
+main()
