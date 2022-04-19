@@ -286,7 +286,6 @@ def LSH(docList, sig, rowsPerBands, numNeighbors, simMethod):
 def LSHcount(numOfHashes):
     minr = numOfHashes  
     for r in range(1,numOfHashes):
-        
         b = floor(numOfHashes/r)
         if 0.4<((1/b)**(1/r)) and ((1/b)**(1/r))<0.6:
             minr = r
@@ -400,13 +399,12 @@ def test(simMethod = 1, numOfPermutations = 64, neighborsMethod = 1, numOfNeighb
     if simMethod==2 or neighborsMethod==2:
         sig = MyMinHash(inputData,numOfPermutations)
     if neighborsMethod == 2:
-        LSH(inputData, sig, LSHcount(numOfPermutations),numOfNeighbors, simMethod)
+        LSH(inputData, sig,LSHcount(numOfPermutations),numOfNeighbors, simMethod)
     else:
         if simMethod == 2:
             bruteForceSigNeighbors(sig, docNum, numOfNeighbors)
         else:
             bruteForceJacNeighbors(inputData, docNum, numOfNeighbors)
- 
-test(2,64,2,2,1,15000)
 
-#main()
+
+main()
